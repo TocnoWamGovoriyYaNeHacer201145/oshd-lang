@@ -93,7 +93,10 @@ def execute(arg):
             try:
                 stack.append(int(arg))
             except:
-                stack.append(arg)
+                try:
+                    stack.append(arg.replace('|',' '))
+                except:
+                    stack.append(arg)
     else:
         if arg == 'fun_end' and current_edit == 'fun':
             new_fun_name = fun_stack[0]
@@ -121,8 +124,8 @@ def execute(arg):
 
 def process_line(line):
     line = line.strip()
-    if line and not line.startswith('#'):
-        commands = line.split('|')
+    if line and not line.startswith('//'):
+        commands = line.split()
         for cmd in commands:
             execute(cmd)
 
