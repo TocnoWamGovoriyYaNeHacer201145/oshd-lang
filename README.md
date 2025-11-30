@@ -20,4 +20,5 @@ And yes, if can sometimes behave strangely, but don't pay attention to that... O
 Hello,|world! print
 ``` 
 P.S. I wrote this documentation quite late, I will rewrite it later 
-## License OSHD licensed under MIT License
+## License 
+OSHD licensed under MIT License
