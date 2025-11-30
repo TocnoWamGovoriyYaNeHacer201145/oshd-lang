@@ -1,16 +1,21 @@
 import sys
 import time
 import random
+import builtins
 
 stack=[]
 fun_stack=[]
 if_stack=[]
-variables={}
+for_stack=[]
 fun_list={}
 main_edit = False
 current_edit = None
 
 def True_or_False(arg1, arg2, arg3):
+    arg1 = check_for_var(arg1); 
+    arg2 = check_for_var(arg2)
+    try: arg1 = int(arg1); arg2 = int(arg2)
+    except: pass
     if arg3 == '>':
         return arg1 > arg2
     elif arg3 == '<':
@@ -25,47 +30,64 @@ def True_or_False(arg1, arg2, arg3):
         return arg1 <= arg2
 
 def print_err(*args, **kwargs): print('', *args, **kwargs)
-def check_for_var(arg):
-    return variables.get(arg, arg)
+
+def check_for_var(arg, arg1=None):
+    answer = getattr(builtins, str(arg), arg)
+    if arg1 is not None:
+        try: return int(answer)
+        except: return answer
+    return answer
 
 def execute(arg):
-    global main_edit, current_edit, fun_stack, if_stack, variables
+    global main_edit, current_edit, fun_stack, if_stack, for_stack
     if main_edit == False:
         if arg == '+':
-            b = check_for_var(stack.pop())
-            a = check_for_var(stack.pop())
-            try: stack.append(int(a) + int(b))
-            except: print_err('f')
+            b = check_for_var(stack.pop(), True)
+            a = check_for_var(stack.pop(), True)
+            stack.append(a + b)
         elif arg == '-':
-            b = check_for_var(stack.pop())
-            a = check_for_var(stack.pop())
-            try: stack.append(int(a) - int(b))
-            except: print_err('f')
+            b = check_for_var(stack.pop(), True)
+            a = check_for_var(stack.pop(), True)
+            stack.append(a - b)
         elif arg == '*':
+            b = check_for_var(stack.pop(), True)
+            a = check_for_var(stack.pop(), True)
+            stack.append(a * b)
+        elif arg == '/':
             b = check_for_var(stack.pop())
             a = check_for_var(stack.pop())
-            try: stack.append(int(a) * int(b))
-            except: print_err('f')
-        elif arg == '/':
-            b = stack.pop()
-            a = stack.pop()
-            try: stack.append(int(a) / int(b))
-            except: print_err('f')
+            stack.append(a / b)
         elif arg == '=':
-            value = stack.pop()
-            name = stack.pop()
-            try: value = int(value)
-            except: pass
-            variables[name] = value
-            stack.append(check_for_var(value))
+            name = str(stack.pop())
+            value = check_for_var(stack.pop(), True)
+            name = str(name)
+            setattr(builtins, name, value)
+            stack.append(value)
         elif arg == 'abs':
-            stack.append(abs(check_for_var(int(stack.pop()))))
+            stack.append(abs(check_for_var(stack.pop(), True)))
         elif arg == 'aiter':
             stack.append(aiter(stack.pop()))
         elif arg == 'print':
             print(check_for_var(stack.pop()))
         elif arg == 'get_inp':
             stack.append(input(stack.pop()))
+        elif arg == 'eval':
+            stack.append(eval(stack.pop()))
+        elif arg == 'read':
+            file = check_for_var(stack.pop())
+            try: 
+                with open(file, 'r') as f:
+                    stack.append(f.read())
+            except Exception as e: 
+                print_err(f'Failed to read file {file}: {e}')
+        elif arg == 'write':
+            file = check_for_var(stack.pop())
+            content = check_for_var(stack.pop())
+            try:
+                with open(file, 'w') as f:
+                    f.write(content)
+            except:
+                print_err(f'Failed to write content to {file}')
         elif arg == 'list':
             list1 = stack.copy()
             stack.clear()
@@ -80,12 +102,22 @@ def execute(arg):
             time.sleep(check_for_var(stack.pop()))
         elif arg == 'randint':
             stack.append(random.randint(1, 100))
+        elif arg == 'import':
+            try:
+                name = stack.pop()
+                name2 = __import__(name)
+                setattr(builtins, name, name2)
+            except:
+                print('f')
         elif arg == 'fun':
             main_edit = True
             current_edit = 'fun'
         elif arg == 'if':
             main_edit = True
             current_edit = 'if'
+        elif arg == 'for':
+            main_edit = True
+            current_edit = 'for'
         elif arg in fun_list:
             for fun_cmd in fun_list[arg].split():
                 execute(fun_cmd)
@@ -93,10 +125,17 @@ def execute(arg):
             try:
                 stack.append(int(arg))
             except:
-                try:
-                    stack.append(arg.replace('|',' '))
-                except:
-                    stack.append(arg)
+                if '|' in arg:
+                    parts = arg.split('|')
+                    final_parts = []
+                    for part in parts:
+                        if part == '': continue
+                        val = str(check_for_var(part))
+                        final_parts.append(val)
+                    stack.append(' '.join(final_parts))
+                else:
+                    try: stack.append(check_for_var(arg))
+                    except: stack.append(arg)
     else:
         if arg == 'fun_end' and current_edit == 'fun':
             new_fun_name = fun_stack[0]
@@ -116,12 +155,25 @@ def execute(arg):
             if condition == True:
                 for cmd in new_if_body:
                     execute(cmd)
+        elif arg == 'for_end' and current_edit == 'for':
+            new_for_args = for_stack[:3]
+            new_for_body = for_stack[3:]
+            var_name = new_for_args[0]
+            arg2 = check_for_var(new_for_args[1], True)
+            op = new_for_args[2]
+            for_stack = []; main_edit = False; current_edit = None
+            while True:
+                arg1 = check_for_var(var_name, True)
+                if not True_or_False(arg1, arg2, op): break
+                for cmd in new_for_body:
+                    execute(cmd)
         else:
             if current_edit == 'fun':
                 fun_stack.append(arg)
             elif current_edit == 'if':
                 if_stack.append(arg)
-
+            elif current_edit == 'for':
+                for_stack.append(arg)
 def process_line(line):
     line = line.strip()
     if line and not line.startswith('//'):
