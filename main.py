@@ -2,11 +2,14 @@ import sys
 import time
 import random
 import builtins
+import threading
 
 stack=[]
 fun_stack=[]
 if_stack=[]
-for_stack=[]
+safe_list = ['__builtins__', '__name__', 'main_edit', 'current_edit',
+             'str', 'int', 'stack', 'fun_stack', 'if_stack', 'execute',
+             'fun_list', 'check_for_var']
 fun_list={}
 main_edit = False
 current_edit = None
@@ -39,7 +42,8 @@ def check_for_var(arg, arg1=None):
     return answer
 
 def execute(arg):
-    global main_edit, current_edit, fun_stack, if_stack, for_stack
+    global main_edit, current_edit, fun_stack, if_stack
+    if not hasattr(execute, 'for_stack'): execute.for_stack = []
     if main_edit == False:
         if arg == '+':
             b = check_for_var(stack.pop(), True)
@@ -61,8 +65,11 @@ def execute(arg):
             name = str(stack.pop())
             value = check_for_var(stack.pop(), True)
             name = str(name)
-            setattr(builtins, name, value)
-            stack.append(value)
+            if name in safe_list:
+                print(f"Can't edit {name}, because it's interpreter variable.")
+            else:
+                setattr(builtins, name, value)
+                stack.append(value)
         elif arg == 'abs':
             stack.append(abs(check_for_var(stack.pop(), True)))
         elif arg == 'aiter':
@@ -156,12 +163,13 @@ def execute(arg):
                 for cmd in new_if_body:
                     execute(cmd)
         elif arg == 'for_end' and current_edit == 'for':
-            new_for_args = for_stack[:3]
-            new_for_body = for_stack[3:]
+            new_for_args = execute.for_stack[:3]
+            new_for_body = execute.for_stack[3:]
             var_name = new_for_args[0]
+            arg1 = check_for_var(new_for_args[0], True)
             arg2 = check_for_var(new_for_args[1], True)
             op = new_for_args[2]
-            for_stack = []; main_edit = False; current_edit = None
+            execute.for_stack = []; main_edit = False; current_edit = None
             while True:
                 arg1 = check_for_var(var_name, True)
                 if not True_or_False(arg1, arg2, op): break
@@ -173,7 +181,7 @@ def execute(arg):
             elif current_edit == 'if':
                 if_stack.append(arg)
             elif current_edit == 'for':
-                for_stack.append(arg)
+                execute.for_stack.append(arg)
 def process_line(line):
     line = line.strip()
     if line and not line.startswith('//'):
@@ -183,7 +191,7 @@ def process_line(line):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print('usage')
+        print('Usage')
         sys.exit(1)
     with open(sys.argv[1], 'r') as file:
         for line in file:
