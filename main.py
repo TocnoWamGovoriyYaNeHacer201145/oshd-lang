@@ -64,7 +64,6 @@ def execute(arg):
         elif arg == '=':
             name = str(stack.pop())
             value = check_for_var(stack.pop(), True)
-            name = str(name)
             if name in safe_list:
                 print(f"Can't edit {name}, because it's interpreter variable.")
             else:
