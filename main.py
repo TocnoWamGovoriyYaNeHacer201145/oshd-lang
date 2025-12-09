@@ -2,14 +2,11 @@ import sys
 import time
 import random
 
-stack=[]
-fun_stack=[]
-if_stack=[]
+stack = []
 variables = {}
-comment_stack = []
-fun_list={}
-main_edit = False
+fun_list = {}
 current_edit = None
+init_stacks = False
 
 def True_or_False(arg1, arg2, arg3):
     arg1 = check_for_var(arg1); 
@@ -33,10 +30,15 @@ def check_for_var(arg, arg1=None):
     return variables.get(arg, arg)
 
 def execute(arg):
-    global variables, main_edit, current_edit, fun_stack, if_stack
-    if not hasattr(execute, 'for_stack'): execute.for_stack = []
-    if not hasattr(execute, 'comment_stack'): execute.comment_stack = []
-    if main_edit == False:
+    global stack, variables, init_stacks, current_edit, fun_list
+    if init_stacks == False:
+        if not hasattr(execute, 'fun_stack'): execute.fun_stack = []
+        if not hasattr(execute, 'if_stack'): execute.if_stack = []
+        if not hasattr(execute, 'for_stack'): execute.for_stack = []
+        if not hasattr(execute, 'comment_stack'): execute.comment_stack = []
+        init_stacks = True
+    else: pass
+    if current_edit == None:
         if arg == '+':
             b = check_for_var(stack.pop(), True)
             a = check_for_var(stack.pop(), True)
@@ -98,20 +100,16 @@ def execute(arg):
         elif arg == 'randint':
             stack.append(random.randint(1, 100))
         elif arg == 'fun':
-            main_edit = True
             current_edit = 'fun'
         elif arg == 'if':
-            main_edit = True
             current_edit = 'if'
         elif arg == 'for':
-            main_edit = True
             current_edit = 'for'
         elif arg in fun_list:
             for fun_cmd in fun_list[arg].split():
                 execute(fun_cmd)
         elif arg == '//':
-            if main_edit == False:
-                main_edit = True
+            if current_edit == None:
                 current_edit = 'comment'
             else:
                 pass
@@ -132,20 +130,20 @@ def execute(arg):
                     except: stack.append(arg)
     else:
         if arg == 'fun_end' and current_edit == 'fun':
-            new_fun_name = fun_stack[0]
-            fun_stack.remove(new_fun_name)
-            new_fun_body = ' '.join(fun_stack)
+            new_fun_name = execute.fun_stack[0]
+            execute.fun_stack.remove(new_fun_name)
+            new_fun_body = ' '.join(execute.fun_stack)
             fun_list[new_fun_name] = new_fun_body
-            fun_stack = []; main_edit = False; current_edit = None
+            execute.fun_stack = []; current_edit = None
         elif arg == 'if_end' and current_edit == 'if':
-            new_if_body = if_stack[3:]
-            try: arg1 = check_for_var(int(if_stack[0]))
-            except: arg1 = check_for_var(if_stack[0])
-            try: arg2 = check_for_var(int(if_stack[1]))
-            except: arg2 = check_for_var(if_stack[1])
-            op = if_stack[2]
+            new_if_body = execute.if_stack[3:]
+            try: arg1 = check_for_var(int(execute.if_stack[0]))
+            except: arg1 = check_for_var(execute.if_stack[0])
+            try: arg2 = check_for_var(int(execute.if_stack[1]))
+            except: arg2 = check_for_var(execute.if_stack[1])
+            op = execute.if_stack[2]
             condition = True_or_False(arg1, arg2, op)
-            if_stack = []; main_edit = False; current_edit = None
+            execute.if_stack = []; current_edit = None
             if condition == True:
                 for cmd in new_if_body:
                     execute(cmd)
@@ -156,7 +154,7 @@ def execute(arg):
             arg1 = check_for_var(new_for_args[0], True)
             arg2 = check_for_var(new_for_args[1], True)
             op = new_for_args[2]
-            execute.for_stack = []; main_edit = False; current_edit = None
+            execute.for_stack = []; current_edit = None
             while True:
                 arg1 = check_for_var(var_name, True)
                 if not True_or_False(arg1, arg2, op): break
@@ -164,12 +162,12 @@ def execute(arg):
                     execute(cmd)
                 stack.pop()
         elif arg == '*/' and current_edit == 'comment':
-            execute.comment_stack = []; main_edit = False; current_edit = None
+            execute.comment_stack = []; current_edit = None
         else:
             if current_edit == 'fun':
-                fun_stack.append(arg)
+                execute.fun_stack.append(arg)
             elif current_edit == 'if':
-                if_stack.append(arg)
+                execute.if_stack.append(arg)
             elif current_edit == 'for':
                 execute.for_stack.append(arg)
             elif current_edit == 'comment':
