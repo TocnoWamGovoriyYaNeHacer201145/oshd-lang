@@ -8,111 +8,79 @@ fun_list = {}
 current_edit = None
 init_stacks = False
 
+syntax_op = {
+    '+': lambda a, b: a + b,
+    '-': lambda a, b: a - b,
+    '*': lambda a, b: a * b,
+    '/': lambda a, b: a / b if b != 0 else 0,
+    '%': lambda a, b: a % b if b != 0 else 0
+}
+
+syntax_builtins = {
+    'abs': lambda: stack.append(abs(check_for_var(stack.pop(), True))),
+    'aiter': lambda: stack.append(aiter(stack.pop())),
+    'print': lambda: print(check_for_var(stack.pop())),
+    'get_inp': lambda: stack.append(input(stack.pop())),
+    'dup': lambda: stack.append(stack[-1]),
+    'del': lambda: stack.pop(),
+    'time': lambda: stack.append(time.time()),
+    'wait': lambda: time.sleep(check_for_var(stack.pop())),
+    'randint': lambda: stack.append(random.randint(stack.pop(), stack.pop())),
+    'fun': lambda: globals().__setitem__('current_edit', 'fun'),
+    'if': lambda: globals().__setitem__('current_edit', 'if'),
+    'for': lambda: globals().__setitem__('current_edit', 'for'),
+    '"': lambda: globals().__setitem__('current_edit', 'string'),
+    '//': lambda: globals().__setitem__('current_edit', 'comment'),
+    '=': lambda: None
+}
+
+syntax_expr = {
+    '<': lambda a, b: a < b,
+    '>': lambda a, b: a > b,
+    '==': lambda a, b: a == b,
+    '!=': lambda a, b: a != b,
+    '>=': lambda a, b: a >= b,
+    '<=': lambda a, b: a <= b
+}
+
 def True_or_False(arg1, arg2, arg3):
-    arg1 = check_for_var(arg1); 
-    arg2 = check_for_var(arg2)
-    try: arg1 = int(arg1); arg2 = int(arg2)
-    except: pass
-    if arg3 == '>':
-        return arg1 > arg2
-    elif arg3 == '<':
-        return arg1 < arg2
-    elif arg3 == '==':
-        return arg1 == arg2
-    elif arg3 == '!=':
-        return arg1 != arg2
-    elif arg3 == '>=':
-        return arg1 >= arg2
-    elif arg3 == '<=':
-        return arg1 <= arg2
+    try: arg1 = int(*check_for_var(arg1))
+    except: arg1 = check_for_var(arg1)
+    try: arg2 = int(check_for_var(arg2))
+    except: arg2 = check_for_var(arg2)
+    if arg3 in syntax_expr:
+        return syntax_expr[arg3](arg1, arg2)
 
 def check_for_var(arg, arg1=None):
     return variables.get(arg, arg)
 
 def execute(arg):
-    global stack, variables, init_stacks, current_edit, fun_list
+    global stack, variables, init_stacks, current_edit
     if init_stacks == False:
         if not hasattr(execute, 'fun_stack'): execute.fun_stack = []
         if not hasattr(execute, 'if_stack'): execute.if_stack = []
         if not hasattr(execute, 'for_stack'): execute.for_stack = []
+        if not hasattr(execute, 'string_stack'): execute.string_stack = []
         if not hasattr(execute, 'comment_stack'): execute.comment_stack = []
         init_stacks = True
     else: pass
     if current_edit == None:
-        if arg == '+':
-            b = check_for_var(stack.pop(), True)
-            a = check_for_var(stack.pop(), True)
-            stack.append(a + b)
-        elif arg == '-':
-            b = check_for_var(stack.pop(), True)
-            a = check_for_var(stack.pop(), True)
-            stack.append(a - b)
-        elif arg == '*':
-            b = check_for_var(stack.pop(), True)
-            a = check_for_var(stack.pop(), True)
-            stack.append(a * b)
-        elif arg == '/':
-            b = check_for_var(stack.pop())
-            a = check_for_var(stack.pop())
-            stack.append(a / b)
-        elif arg == '=':
+        if arg == '=':
             name = stack.pop()
-            value = stack.pop()
+            value = check_for_var(stack.pop())
             try: value = int(value)
             except: pass
             variables[name] = value
-            stack.append(check_for_var(value))
-        elif arg == 'abs':
-            stack.append(abs(check_for_var(stack.pop(), True)))
-        elif arg == 'aiter':
-            stack.append(aiter(stack.pop()))
-        elif arg == 'print':
-            print(check_for_var(stack.pop()))
-        elif arg == 'get_inp':
-            stack.append(input(stack.pop()))
-        elif arg == 'read':
-            file = check_for_var(stack.pop())
-            try: 
-                with open(file, 'r') as f:
-                    stack.append(f.read())
-            except Exception as e: 
-                print(f'Failed to read file {file}: {e}')
-        elif arg == 'write':
-            file = check_for_var(stack.pop())
-            content = check_for_var(stack.pop())
-            try:
-                with open(file, 'w') as f:
-                    f.write(content)
-            except:
-                print(f'Failed to write content to {file}')
-        elif arg == 'list':
-            list1 = stack.copy()
-            stack.clear()
-            stack.append(list1)
-        elif arg == 'dup':
-            stack.append(stack[-1])
-        elif arg == 'del':
-            stack.pop()
-        elif arg == 'time':
-            stack.append(time.time())
-        elif arg == 'wait':
-            time.sleep(check_for_var(stack.pop()))
-        elif arg == 'randint':
-            stack.append(random.randint(1, 100))
-        elif arg == 'fun':
-            current_edit = 'fun'
-        elif arg == 'if':
-            current_edit = 'if'
-        elif arg == 'for':
-            current_edit = 'for'
+            stack.append(variables[name])
+        if arg in syntax_op:
+            b = check_for_var(stack.pop())
+            a = check_for_var(stack.pop())
+            stack.append(syntax_op[arg](a, b))
+        elif arg in syntax_builtins:
+            syntax_builtins[arg]()
         elif arg in fun_list:
             for fun_cmd in fun_list[arg].split():
                 execute(fun_cmd)
-        elif arg == '//':
-            if current_edit == None:
-                current_edit = 'comment'
-            else:
-                pass
         else:
             try:
                 stack.append(int(arg))
@@ -155,23 +123,34 @@ def execute(arg):
             arg2 = check_for_var(new_for_args[1], True)
             op = new_for_args[2]
             execute.for_stack = []; current_edit = None
+            while len(stack) > 0: stack.pop()
             while True:
                 arg1 = check_for_var(var_name, True)
                 if not True_or_False(arg1, arg2, op): break
                 for cmd in new_for_body:
                     execute(cmd)
-                stack.pop()
+                    print(stack)
+        elif arg == '/"' and current_edit == 'ff':
+            final_stack = []
+            for obj in execute.string_stack:
+                obj = str(check_for_var(obj))
+                final_stack.append(obj)
+            stack.append(' '.join(final_stack))
+            execute.string_stack = []; current_edit = None
         elif arg == '*/' and current_edit == 'comment':
             execute.comment_stack = []; current_edit = None
         else:
             if current_edit == 'fun':
-                execute.fun_stack.append(arg)
+                execute.fun_stack.append(check_for_var(arg))
             elif current_edit == 'if':
-                execute.if_stack.append(arg)
+                execute.if_stack.append(check_for_var(arg))
             elif current_edit == 'for':
-                execute.for_stack.append(arg)
+                execute.for_stack.append(check_for_var(arg))
+            elif current_edit == 'string':
+                execute.string_stack.append(check_for_var(arg))
             elif current_edit == 'comment':
                 execute.comment_stack.append(arg)
+
 def process_line(line):
     line = line.strip()
     if line and not line.startswith('//'):
