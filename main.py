@@ -130,7 +130,7 @@ def execute(arg):
                 for cmd in new_for_body:
                     execute(cmd)
                     print(stack)
-        elif arg == '/"' and current_edit == 'ff':
+        elif arg == '/"' and current_edit == 'string':
             final_stack = []
             for obj in execute.string_stack:
                 obj = str(check_for_var(obj))
