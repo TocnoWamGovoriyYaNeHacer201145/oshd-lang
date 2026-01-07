@@ -112,30 +112,30 @@ def execute(arg):
     else:
         if arg == 'end':
             if current_edit == 'fun':
-                new_fun_name = str(execute.fun_stack[0])
-                execute.fun_stack.remove(new_fun_name)
-                new_fun_body = list(map(str, execute.fun_stack))
+                new_fun_name = str(execute.temp_stack[0])
+                execute.temp_stack.remove(new_fun_name)
+                new_fun_body = list(map(str, execute.temp_stack))
                 fun_list[new_fun_name] = new_fun_body
-                execute.fun_stack = []; current_edit = None
+                execute.temp_stack = []; current_edit = None
             elif current_edit == 'if':
-                new_if_body = execute.if_stack[3:]
-                try: arg1 = check_for_var(int(execute.if_stack[0]))
-                except: arg1 = check_for_var(execute.if_stack[0])
-                try: arg2 = check_for_var(int(execute.if_stack[1]))
-                except: arg2 = check_for_var(execute.if_stack[1])
-                condition = True_or_False(arg1, arg2, execute.if_stack[2])
-                execute.if_stack = []; current_edit = None
+                new_if_body = execute.temp_stack[3:]
+                try: arg1 = check_for_var(int(execute.temp_stack[0]))
+                except: arg1 = check_for_var(execute.temp_stack[0])
+                try: arg2 = check_for_var(int(execute.temp_stack[1]))
+                except: arg2 = check_for_var(execute.temp_stack[1])
+                condition = True_or_False(arg1, arg2, execute.temp_stack[2])
+                execute.temp_stack = []; current_edit = None
                 if condition:
                     for cmd in new_if_body:
                         execute(cmd)
             elif current_edit == 'for':
-                new_for_args = execute.for_stack[:3]
-                new_for_body = execute.for_stack[3:]
+                new_for_args = execute.temp_stack[:3]
+                new_for_body = execute.temp_stack[3:]
                 var_name = new_for_args[0]
                 arg1 = check_for_var(new_for_args[0])
                 arg2 = check_for_var(new_for_args[1])
                 op = new_for_args[2]
-                execute.for_stack = []; current_edit = None
+                execute.temp_stack = []; current_edit = None
                 while True:
                     arg1 = variables.get(var_name, var_name)
                     if True_or_False(arg1, arg2, op) == False: break
@@ -143,27 +143,17 @@ def execute(arg):
                         execute(cmd)
         elif arg == '/"' and current_edit == 'string':
             final_stack = []
-            for obj in execute.string_stack:
+            for obj in execute.temp_stack:
                 obj = str(check_for_var(obj))
                 final_stack.append(obj)
             stack.append(' '.join(final_stack))
-            execute.string_stack = []; current_edit = None
+            execute.temp_stack = []; current_edit = None
         elif arg == '*/' and current_edit == 'comment':
             current_edit = None
         else:
-            if current_edit == 'fun':
-                execute.fun_stack.append(variables.get(arg, arg))
-            elif current_edit == 'if':
-                execute.if_stack.append(variables.get(arg, arg))
-            elif current_edit == 'for':
-                execute.for_stack.append(variables.get(arg, arg))
-            elif current_edit == 'string':
-                execute.string_stack.append(variables.get(arg, arg))
+            execute.temp_stack.append(variables.get(arg, arg))
 
-execute.fun_stack = []
-execute.if_stack = []
-execute.for_stack = []
-execute.string_stack = []
+execute.temp_stack = []
 execute.imported_libs = {}
 
 def process_line(line):
