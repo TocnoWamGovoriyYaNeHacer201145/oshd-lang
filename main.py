@@ -157,7 +157,7 @@ execute.temp_stack = []
 execute.imported_libs = {}
 
 def process_line(line):
-    "Splits line and sends it to execue"
+    "Splits line and sends it to execute"
     line = line.split()
     for cmd in line:
         execute(cmd)
