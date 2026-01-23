@@ -14,6 +14,7 @@ variables = {
 }
 fun_list = {}
 current_edit = None
+has_else = False
 
 builtins_ops = {
     # Math
@@ -82,7 +83,7 @@ def check_for_var(arg):
 
 def execute(arg):
     "Main interpreter"
-    global stack, variables, current_edit
+    global stack, variables, current_edit, has_else
     if current_edit == None:
         if arg == '=':
             name = stack.pop()
@@ -119,15 +120,20 @@ def execute(arg):
                 execute.temp_stack = []; current_edit = None
             elif current_edit == 'if':
                 new_if_body = execute.temp_stack[3:]
+                new_else_body = execute.temp_stack2.copy()
                 try: arg1 = check_for_var(int(execute.temp_stack[0]))
                 except: arg1 = check_for_var(execute.temp_stack[0])
                 try: arg2 = check_for_var(int(execute.temp_stack[1]))
                 except: arg2 = check_for_var(execute.temp_stack[1])
                 condition = True_or_False(arg1, arg2, execute.temp_stack[2])
-                execute.temp_stack = []; current_edit = None
+                execute.temp_stack = []; execute.temp_stack2 = []; current_edit = None
                 if condition:
                     for cmd in new_if_body:
                         execute(cmd)
+                else:
+                    if has_else:
+                        for cmd in new_else_body:
+                            execute(cmd)
             elif current_edit == 'for':
                 new_for_args = execute.temp_stack[:3]
                 new_for_body = execute.temp_stack[3:]
@@ -141,6 +147,8 @@ def execute(arg):
                     if True_or_False(arg1, arg2, op) == False: break
                     for cmd in new_for_body:
                         execute(cmd)
+        elif arg == 'else' and current_edit == 'if':
+            has_else = True
         elif arg == '/"' and current_edit == 'string':
             final_stack = []
             for obj in execute.temp_stack:
@@ -151,9 +159,13 @@ def execute(arg):
         elif arg == '*/' and current_edit == 'comment':
             current_edit = None
         else:
-            execute.temp_stack.append(variables.get(arg, arg))
+            if has_else:
+                execute.temp_stack2.append(variables.get(arg, arg))
+            else:
+                execute.temp_stack.append(variables.get(arg, arg))
 
 execute.temp_stack = []
+execute.temp_stack2 = []
 execute.imported_libs = {}
 
 def process_line(line):
