@@ -4,7 +4,7 @@ import random
 
 stack = []
 ret_stack = []
-memory = [0] * 64000
+memory = 0
 variables = {
     '__version': '0.0.9-alpha',
     '__platform': sys.platform,
@@ -58,6 +58,7 @@ builtins = {
     '"': lambda: globals().__setitem__('current_edit', 'string'),
     '//': lambda: globals().__setitem__('current_edit', 'comment'),
     # Py things
+    'init_mem': lambda: globals().__setitem__('memory', [0] * stack.pop()),
     'import': lambda: execute.imported_libs.__setitem__(stack.pop(), __import__(stack.pop())), #Waiting for rework
     'pyexec': lambda: exec(stack.pop(), variables)
 }
@@ -122,10 +123,8 @@ def execute(text) -> None:
                 elif current_edit == 'if':
                     new_if_body = execute.temp_stack[3:]
                     new_else_body = execute.temp_stack2.copy()
-                    try: arg1 = check_for_var(int(execute.temp_stack[0]))
-                    except: arg1 = check_for_var(execute.temp_stack[0])
-                    try: arg2 = check_for_var(int(execute.temp_stack[1]))
-                    except: arg2 = check_for_var(execute.temp_stack[1])
+                    arg1 = check_for_var(execute.temp_stack[0])
+                    arg2 = check_for_var(execute.temp_stack[1])
                     condition = True_or_False(arg1, arg2, execute.temp_stack[2])
                     execute.temp_stack = []; execute.temp_stack2 = []; current_edit = None
                     if condition:
