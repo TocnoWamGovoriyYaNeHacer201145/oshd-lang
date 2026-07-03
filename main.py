@@ -7,7 +7,6 @@ variables = {}
 fun_dict = {}
 content = []
 
-cur_edit = None
 pointer = 0
 
 builtins_ops = {
@@ -29,7 +28,7 @@ builtins = {
     '@': lambda: stack.append(memory[stack.pop()]),
     # I/O
     '.': lambda: print(stack.pop(), end=' '),
-    'print': lambda: print(check_for_var(stack.pop())),
+    'print': lambda: print(stack.pop()),
     'input': lambda: stack.append(input(stack.pop())),
     # Stack
     'dup': lambda: stack.append(stack[-1]),
@@ -46,19 +45,14 @@ builtins = {
     '>ret': lambda: ret_stack.append(stack.pop()),
     'ret>': lambda: stack.append(ret_stack.pop()),
     'ret@': lambda: stack.append(ret_stack[-1]),
-    # 
+    #!
     'fun': lambda: _fun(),
     'if': lambda: _if(),
     'for': lambda: _for(),
-    '//': lambda: globals().__setitem__('current_edit', 'comment'),
     # Py things
     'init_mem': lambda: globals().__setitem__('memory', [0] * stack.pop()),
     'import': lambda: _import(),
 }
-
-def check_for_var(arg):
-    "Checks if arg in variables, if yes returns value. If not just returns arg"
-    return variables.get(arg, arg)
 
 def _var():
     global content, pointer, variables
@@ -93,6 +87,7 @@ def _import():
     pointer += 1
 
 def run(parsed_code,r=False):
+    "Main interpreter"
     global stack, memory, pointer
 
     if r:
