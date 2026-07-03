@@ -1,20 +1,14 @@
 import sys
-import time
-import random
 
 stack = []
 ret_stack = []
-memory = 0
-variables = {
-    '__version': '0.0.9-alpha',
-    '__platform': sys.platform,
-    'true': True, 
-    'false': False,
-    'null': None
-}
-fun_list = {}
-current_edit = None
-has_else = False
+memory = [0]
+variables = {}
+fun_dict = {}
+content = []
+
+cur_edit = None
+pointer = 0
 
 builtins_ops = {
     # Math
@@ -23,11 +17,16 @@ builtins_ops = {
     '*': lambda a, b: a * b,
     '/': lambda a, b: a / b if b != 0 else 0,
     '%': lambda a, b: a % b if b != 0 else 0,
+    '<': lambda a, b: a < b,
+    '>': lambda a, b: a > b,
+    '==': lambda a, b: a == b,
+    '!=': lambda a, b: a != b,
+    '>=': lambda a, b: a >= b,
+    '<=': lambda a, b: a <= b
 }
 builtins = {
     '!': lambda: memory.__setitem__(stack.pop(), stack.pop()),
     '@': lambda: stack.append(memory[stack.pop()]),
-    'abs': lambda: stack.append(abs(check_for_var(stack.pop()))),
     # I/O
     '.': lambda: print(stack.pop(), end=' '),
     'print': lambda: print(check_for_var(stack.pop())),
@@ -39,11 +38,7 @@ builtins = {
     'drop': lambda: stack.pop(),
     'depth': lambda: stack.append(len(stack)),
     'clear': lambda: stack.clear(),
-    # Cool things
-    'time': lambda: stack.append(time.time()),
-    'wait': lambda: time.sleep(check_for_var(stack.pop())),
-    'randint': lambda: stack.append(random.randint(stack.pop(), stack.pop())),
-    '=': lambda: None,
+    '=': lambda: _var(),
     # Types
     'int': lambda: stack.append(int(stack.pop())),
     'str': lambda: stack.append(str(stack.pop())),
@@ -51,134 +46,119 @@ builtins = {
     '>ret': lambda: ret_stack.append(stack.pop()),
     'ret>': lambda: stack.append(ret_stack.pop()),
     'ret@': lambda: stack.append(ret_stack[-1]),
-    # Modes
-    'fun': lambda: globals().__setitem__('current_edit', 'fun'),
-    'if': lambda: globals().__setitem__('current_edit', 'if'),
-    'for': lambda: globals().__setitem__('current_edit', 'for'),
-    '"': lambda: globals().__setitem__('current_edit', 'string'),
+    # 
+    'fun': lambda: _fun(),
+    'if': lambda: _if(),
+    'for': lambda: _for(),
     '//': lambda: globals().__setitem__('current_edit', 'comment'),
     # Py things
     'init_mem': lambda: globals().__setitem__('memory', [0] * stack.pop()),
-    'import': lambda: execute.imported_libs.__setitem__(stack.pop(), __import__(stack.pop())), #Waiting for rework
-    'pyexec': lambda: exec(stack.pop(), variables)
+    'import': lambda: _import(),
 }
-
-syntax_expr = {
-    '<': lambda a, b: a < b,
-    '>': lambda a, b: a > b,
-    '==': lambda a, b: a == b,
-    '!=': lambda a, b: a != b,
-    '>=': lambda a, b: a >= b,
-    '<=': lambda a, b: a <= b
-}
-
-def True_or_False(arg1, arg2, arg3) -> bool:
-    "Checks condition, and returns True or False"
-    if arg3 in syntax_expr:
-        try: return syntax_expr[arg3](int(arg1), int(arg2))
-        except: return syntax_expr[arg3](arg1, arg2)
 
 def check_for_var(arg):
     "Checks if arg in variables, if yes returns value. If not just returns arg"
     return variables.get(arg, arg)
 
-def execute(text) -> None:
-    "Main interpreter"
-    global stack, variables, current_edit, has_else
-    for arg in text:
-        if current_edit == None:
-            if arg == '=':
-                name = stack.pop()
-                variables[name] = check_for_var(stack.pop())
-                stack.append(variables[name])
-            elif arg in builtins:
-                builtins[arg]()
-            elif arg in builtins_ops:
-                b = check_for_var(stack.pop())
-                a = check_for_var(stack.pop())
-                stack.append(builtins_ops[arg](a, b))
-            elif arg in fun_list:
-                for fun_cmd in fun_list[arg]:
-                    execute(fun_cmd)
+def _var():
+    global content, pointer, variables
+    value, name = stack.pop(), stack.pop()
+    variables[name] = value
+
+def _fun():
+    global content, pointer, fun_dict
+    name, body = content[pointer + 1], content[pointer + 2]
+    fun_dict[name] = body
+    pointer += 1
+
+def _if():
+    global stack, content, pointer
+    cond = stack.pop()
+    if cond:
+        run(content[pointer + 1], True)
+    pointer += 1
+
+def _for():
+    global stack, content, pointer
+    num = stack.pop()
+    for _ in range(num):
+        run(content[pointer + 1], True)
+    pointer += 1
+
+def _import():
+    global content, pointer
+    lib_name = content[pointer + 1]
+    with open(lib_name, 'r') as f:
+        run(parse(f.read()), True)
+    pointer += 1
+
+def run(parsed_code,r=False):
+    global stack, memory, pointer
+
+    if r:
+        s_p, pointer = pointer, 0
+
+    while pointer < len(parsed_code):
+
+        obj = parsed_code[pointer]
+
+        if isinstance(obj, (str, int)):
+            if obj in builtins_ops:
+                b = stack.pop()
+                a = stack.pop()
+                stack.append(builtins_ops[obj](a, b))
+            elif obj in builtins:
+                builtins[obj]()
+            elif obj in variables:
+                stack.append(variables[obj])
+            elif obj in fun_dict:
+                run(fun_dict[obj],True)
             else:
-                try:
-                    stack.append(int(arg))
-                except:
-                    if '|' in arg:
-                        stack.append(' '.join(str(check_for_var(part)) for part in arg.split('|') if part))
-                    elif '.' in str(arg):
-                        _arg = arg.split('.')
-                        if hasattr(execute.imported_libs[_arg[0]], f'_{check_for_var(_arg[1])}'):
-                            stack = getattr(execute.imported_libs[_arg[0]], f'_{check_for_var(_arg[1])}')(stack)
-                    else:
-                        stack.append(variables.get(arg, arg))
-        else:
-            if arg == 'end':
-                if current_edit == 'fun':
-                    new_fun_name = str(execute.temp_stack[0])
-                    execute.temp_stack.remove(new_fun_name)
-                    new_fun_body = list(map(str, execute.temp_stack))
-                    fun_list[new_fun_name] = new_fun_body
-                    execute.temp_stack = []; current_edit = None
-                elif current_edit == 'if':
-                    new_if_body = execute.temp_stack[3:]
-                    new_else_body = execute.temp_stack2.copy()
-                    arg1 = check_for_var(execute.temp_stack[0])
-                    arg2 = check_for_var(execute.temp_stack[1])
-                    condition = True_or_False(arg1, arg2, execute.temp_stack[2])
-                    execute.temp_stack = []; execute.temp_stack2 = []; current_edit = None
-                    if condition:
-                        execute(new_if_body)
-                    else:
-                        if has_else:
-                            execute(new_else_body)
-                elif current_edit == 'for':
-                    new_for_args = execute.temp_stack[:3]
-                    new_for_body = execute.temp_stack[3:]
-                    var_name = new_for_args[0]
-                    arg1 = check_for_var(new_for_args[0])
-                    arg2 = check_for_var(new_for_args[1])
-                    op = new_for_args[2]
-                    execute.temp_stack = []; current_edit = None
-                    while True:
-                        arg1 = variables.get(var_name, var_name)
-                        if True_or_False(arg1, arg2, op) == False: break
-                        execute(new_for_body)
-            elif arg == 'else' and current_edit == 'if':
-                has_else = True
-            elif arg == '/"' and current_edit == 'string':
-                final_stack = []
-                for obj in execute.temp_stack:
-                    obj = str(check_for_var(obj))
-                    final_stack.append(obj)
-                stack.append(' '.join(final_stack))
-                execute.temp_stack = []; current_edit = None
-            elif arg == '*/' and current_edit == 'comment':
-                current_edit = None
+                stack.append(obj)
+        
+        pointer += 1
+
+    if r:
+        pointer = s_p
+
+def parse(text):
+    text = text.split()
+    collecting = False
+    temp_list = []
+    result = []
+    for obj in text:
+        if collecting:
+            if obj == '}':
+                collecting = False
+                result.append(temp_list.copy())
+                temp_list = []
+            elif obj == '/"':
+                collecting = False
+                result.append(' '.join(temp_list.copy()))
+                temp_list = []
+            elif obj == '*/':
+                collecting = False
+                temp_list = []
             else:
-                if has_else:
-                    execute.temp_stack2.append(variables.get(arg, arg))
+                if obj.isdigit():
+                    temp_list.append(int(obj))
                 else:
-                    execute.temp_stack.append(variables.get(arg, arg))
-
-execute.temp_stack = []
-execute.temp_stack2 = []
-execute.imported_libs = {}
-
-def parse(line) -> list:
-    "Splits line and sends it to execute"
-    line = line.split()
-    parsed = []
-    for obj in line:
-        if obj.isdigit():
-            parsed.append(int(obj))
+                    temp_list.append(obj)
         else:
-            parsed.append(obj)
-    return parsed
+            if obj.isdigit():
+                result.append(int(obj))
+            elif obj == '{': collecting = True
+            elif obj == '"/': collecting = True
+            elif obj == '/*': collecting = True
+            else:
+                result.append(obj)
+    global content
+    content = result.copy()
+    return result
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print('Usage: python3 oshd.py <.oshd file>')
-        sys.exit(1)
-    with open(sys.argv[1], 'r') as f:
-        execute(parse(f.read()))
+        print(f'Usage:\n    python3 {__file__} <your .oshd file>')
+        sys.exit()
+    with open(sys.argv[-1], 'r') as f:
+        run(parse(f.read()))
