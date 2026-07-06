@@ -21,11 +21,16 @@ builtins_ops = {
     '==': lambda a, b: a == b,
     '!=': lambda a, b: a != b,
     '>=': lambda a, b: a >= b,
-    '<=': lambda a, b: a <= b
+    '<=': lambda a, b: a <= b,
+    'and': lambda a, b: a & b,
+    'or': lambda a, b: a | b,
+    'xor': lambda a, b: a ^ b,
 }
 builtins = {
+    # Memory
     '!': lambda: memory.__setitem__(stack.pop(), stack.pop()),
     '@': lambda: stack.append(memory[stack.pop()]),
+    'init_mem': lambda: globals().__setitem__('memory', [0] * stack.pop()),
     # I/O
     '.': lambda: print(stack.pop(), end=' '),
     'print': lambda: print(stack.pop()),
@@ -45,13 +50,25 @@ builtins = {
     '>ret': lambda: ret_stack.append(stack.pop()),
     'ret>': lambda: stack.append(ret_stack.pop()),
     'ret@': lambda: stack.append(ret_stack[-1]),
+    # Bit logic
+    'not': lambda: stack.append(~stack.pop()),
     #!
     'fun': lambda: _fun(),
     'if': lambda: _if(),
     'for': lambda: _for(),
-    # Py things
-    'init_mem': lambda: globals().__setitem__('memory', [0] * stack.pop()),
+    # Cool things
     'import': lambda: _import(),
+    # File I/O
+    'fread': lambda: stack.append(open(stack.pop(), 'r').read()),
+    # String ...
+    'split': lambda: stack.append(stack.pop().split()),
+    # List ...
+    'get': lambda: stack.append(stack.pop()[-1][stack.pop()]),
+    'add': lambda: _add(),
+    'v_add': lambda: _v_add(),
+    'n_set': lambda: stack.append([]),
+    #!
+    'eval': lambda: run(stack.pop(),True)
 }
 
 def _var():
@@ -86,15 +103,27 @@ def _import():
         run(parse(f.read()), True)
     pointer += 1
 
+def _v_add():
+    global stack
+    obj = stack.pop()
+    variables[stack.pop()].append(obj)
+
+def _add():
+    global stack
+    obj = stack.pop()
+    _list = stack.pop()
+    _list.append(obj)
+    stack.append(_list.copy())
+
 def run(parsed_code,r=False):
     "Main interpreter"
-    global stack, memory, pointer
+    global stack, memory, pointer, content
 
     if r:
         s_p, pointer = pointer, 0
+        s_c, content = content, parsed_code
 
     while pointer < len(parsed_code):
-
         obj = parsed_code[pointer]
 
         if isinstance(obj, (str, int)):
@@ -115,6 +144,7 @@ def run(parsed_code,r=False):
 
     if r:
         pointer = s_p
+        content = s_c
 
 def parse(text):
     text = text.split()
