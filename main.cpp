@@ -110,8 +110,12 @@ inline void InitBuiltins() {
     compile_words["then"] = {2,
         []() {
             int cond = to_int(pop());
+
+            std::string local_body = body;
+            body.clear();
+
             if (cond) {
-                run(body);
+                run(local_body);
             }
         }
     };
