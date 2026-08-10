@@ -1,19 +1,30 @@
 ## What is OSHD?
-OSHD is a stack-oriented programming language, with Reverse Polish notation. 
-In it, you can check conditions, add functions, and make loops.
-/ Under construction /
+OSHD is a stack-oriented programming language, with Reverse Polish notation.
 
-# Examples (Under construction)
- XXX
+# Examples
 
-## Usage:
-
+### Hello world
 ```
-python3 oshd.py <your oshd file>
+" Hello, world " .
+bye
+```
+### Example of "greet" function
+```
+greet {
+   Hello, . .
+}
 ```
 
-## Contribution
+# Usage:
+To use this you first need to compile it with your compiler (g++ for example):
+```
+g++ -O2 main.cpp -o oshd
+# And then you can just run it in REPL mode
+./oshd
+```
+
+# Contribution
 Feel free to make a pull request or suggest changes.
 
-## License
-OSHD licensed under MIT License
+# License
+OSHD licensed under Apache 2.0 License
