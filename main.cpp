@@ -95,9 +95,9 @@ inline void InitBuiltins() {
     builtins["r>"] = []() {StackValue obj = ret_stack.back(); ret_stack.pop_back(); push(obj);};
     builtins["r@"] = []() {push(ret_stack.back());};
 
-    builtins["{"] = []() {compiling = 1;};
-    builtins["if"] = []() {compiling = 2;};
-    builtins["\""] = []() {compiling = 3;};
+    builtins["{"] = []() {compiling += 1;};
+    builtins["if"] = []() {compiling += 2;};
+    builtins["\""] = []() {compiling += 3;};
 
     builtins["bye"] = []() {r = 0;};
 
@@ -134,16 +134,20 @@ void run(std::string line) {
     while (ss >> token) {
         if (compiling) {
             if (compile_words.count(token)) {
-                if (compile_words[token].first == compiling) {
-                    // std::cout << compile_words[token].first << ' ' << token << std::endl;
-                    compiling = false;
-                    compile_words[token].second();
-                    body.clear();
-                } else {
-                    body += ' ';
-                    body += token;
-                }
+                if ((compiling - compile_words[token].first) >= 0)
+                    compiling -= compile_words[token].first;
+                    if (compiling == 0) {
+                        compile_words[token].second();
+                        body.clear();
+                    }
+                    else {
+                        body += ' ';
+                        body += token;
+                    }
             } else {
+                if (token == "if" || token == "{" || token == "\"") {
+                    builtins[token]();
+                }
                 body += ' ';
                 body += token;
             }
