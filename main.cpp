@@ -36,12 +36,12 @@ inline StackValue pop() {
     return obj;
 }
 
-// Prototypes???
+// Functions prototypes!!!
 void run(std::string);
 void run_file(std::string);
 
-// Inlined, because we use this only once
-inline void InitBuiltins() {
+// Inlined, because it is used only once
+inline void init_builtins() {
     builtins["+"] = []() {int b = to_int(pop()); int a = to_int(pop()); push(a + b);};
     builtins["-"] = []() {int b = to_int(pop()); int a = to_int(pop()); push(a - b);};
     builtins["*"] = []() {int b = to_int(pop()); int a = to_int(pop()); push(a * b);};
@@ -73,7 +73,7 @@ inline void InitBuiltins() {
             std::cout << std::get<std::string>(value) << " ";
         }
     };
-    builtins["emit"] = []() {printf("%c", to_int(pop()));};
+    builtins["emit"] = []() {putchar_unlocked(to_int(pop()));};
     builtins[","] = []() {push(getchar_unlocked());};
 
     builtins["nl"] = []() {std::cout << std::endl;};
@@ -98,6 +98,8 @@ inline void InitBuiltins() {
     builtins["{"] = []() {compiling += 1;};
     builtins["if"] = []() {compiling += 2;};
     builtins["\""] = []() {compiling += 3;};
+    
+    builtins["concat"] = []() {std::string b = to_str(pop()); push(to_str(pop()) + b);};
 
     builtins["bye"] = []() {r = 0;};
 
@@ -185,10 +187,12 @@ void run_file(std::string _file) {
 }
 
 int main(int argc, char** argv) {    
-    InitBuiltins();
+    init_builtins();
     if (argc >= 2) {
-        for (int i = 1; i < argc; i++) {
-            run_file(argv[i]);
+        if (argv[1] != "repl")  {
+            for (int i = 1; i < argc; i++) {
+                run_file(argv[i]);
+            }
         }
     } else {
         std::cout << "Usage: <compiler binary> [files]" << std::endl;
