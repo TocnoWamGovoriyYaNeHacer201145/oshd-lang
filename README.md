@@ -20,7 +20,7 @@ To use this you first need to compile it with your compiler (g++ for example):
 ```
 g++ -O2 main.cpp -o oshd
 # And then you can just run it in REPL mode
-./oshd
+./oshd repl
 ```
 
 # Contribution
