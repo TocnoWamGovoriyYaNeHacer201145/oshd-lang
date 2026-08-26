@@ -56,7 +56,7 @@ inline void init_builtins() {
     builtins["xor"] = []() { int b = to_int(pop()); int a = to_int(pop()); push(a ^ b); };
     builtins["not"] = []() { int a = to_int(pop()); push(~a); };
 
-    builtins["import"] = []() { run_file(to_str(pop()));} ;
+    builtins["import"] = []() { run_file(to_str(pop())); };
 
     builtins["init_mem"] = []() { memory.reserve(to_int(pop())); };
     builtins["!"] = []() { int addr = to_int(pop()); StackValue value = pop(); memory[addr] = value; };
@@ -105,7 +105,7 @@ inline void init_builtins() {
     builtins["if"] = []() { compiling += 2; };
     builtins["\""] = []() { compiling += 3; };
     
-    builtins["concat"] = []() { std::string b = to_str(pop()); push(to_str(pop()) + b); };
+    builtins["strcat"] = []() { std::string b = to_str(pop()); push(to_str(pop()) + b); };
 
     builtins["bye"] = []() { running = 0; };
 
