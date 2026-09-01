@@ -6,7 +6,7 @@
 #include <sstream>
 #include <fstream>
 
-using StackValue = std::variant<int, std::string>;
+using StackValue = std::variant<int, std::string, char>;
 
 std::vector<StackValue> stack;
 std::vector<StackValue> ret_stack;
@@ -24,6 +24,7 @@ int compiling = 0;
 
 #define to_int(obj) std::get<int>(obj)
 #define to_str(obj) std::get<std::string>(obj).c_str()
+#define to_char(obj) std::get<char>(obj)
 
 #define push(val) stack.push_back(val)
 inline StackValue pop() {
@@ -46,8 +47,8 @@ inline void init_builtins() {
 
     builtins["<"] = []() { int b = to_int(pop()); int a = to_int(pop()); push(a < b); };
     builtins[">"] = []() { int b = to_int(pop()); int a = to_int(pop()); push(a > b); };
-    builtins["=="] = []() { StackValue b = pop(); StackValue a = pop(); push(a == b); };
-    builtins["!="] = []() {int b = to_int(pop()); int a = to_int(pop()); push(a != b); };
+    builtins["=="] = []() { auto b = pop(); auto a = pop(); push(a == b); };
+    builtins["!="] = []() { auto b = pop(); auto a = pop(); push(a != b); };
     builtins[">="] = []() { int b = to_int(pop()); int a = to_int(pop()); push(a >= b);};
     builtins["<="] = []() { int b = to_int(pop()); int a = to_int(pop()); push(a <= b); };
 
@@ -90,8 +91,10 @@ inline void init_builtins() {
         StackValue value = pop();
         if (std::holds_alternative<int>(value)) {
             push("int");
-        } else {
+        } else if (std::holds_alternative<std::string>(value)) {
             push("str");
+        } else {
+            push("char");
         }
     };
     
@@ -106,6 +109,39 @@ inline void init_builtins() {
     builtins["\""] = []() { compiling += 3; };
     
     builtins["strcat"] = []() { std::string b = to_str(pop()); push(to_str(pop()) + b); };
+
+    builtins["abort"] = []() { std::abort(); };
+    builtins["abs"] = []() { push(std::abs(to_int(pop()))); };
+    builtins["system"] = []() { std::system(to_str(pop())); };
+    builtins["qexit"] = []() { std::quick_exit(to_int(pop())); };
+
+    builtins["isdigit"] = []() {
+        if (std::holds_alternative<int>(pop())) {
+            push(1);
+        } else {
+            push(0);
+        }
+    };
+
+    builtins["c+str"] = []() { 
+        std::string obj = to_str(pop());
+        obj += to_char(pop());
+        push(obj);
+    };
+    builtins["str_index"] = []() {
+        std::string obj = to_str(pop());
+        push(obj[to_int(pop())]);
+    };
+
+    builtins["rfile"] = []() { 
+        std::ifstream file(to_str(pop()));
+
+        if (file.is_open()) {
+            std::ostringstream ss;
+            ss << file.rdbuf();
+            push(ss.str());
+        }
+    };
 
     builtins["bye"] = []() { running = 0; };
 
@@ -192,7 +228,7 @@ void run_file(std::string _file) {
     }
 }
 
-int main(int argc, char** argv) {    
+int main(int argc, char** argv) {
     init_builtins();
     if (argc >= 2) {
         if (argv[1] != "repl")  {
