@@ -110,7 +110,6 @@ inline void init_builtins() {
     
     builtins["strcat"] = []() { std::string b = to_str(pop()); push(to_str(pop()) + b); };
 
-    builtins["abort"] = []() { std::abort(); };
     builtins["abs"] = []() { push(std::abs(to_int(pop()))); };
     builtins["system"] = []() { std::system(to_str(pop())); };
     builtins["qexit"] = []() { std::quick_exit(to_int(pop())); };
